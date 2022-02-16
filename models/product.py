@@ -8,6 +8,10 @@ class Product(models.Model):
     def _compute_quantities_dict(self, *args, **kwargs):
         self = self.sudo()
         res = super()._compute_quantities_dict(*args, **kwargs)
+
+        if not res:
+            return res
+
         warehouse = None
         warehouse_id = self.env.context.get("warehouse")
         if warehouse_id:
@@ -19,13 +23,12 @@ class Product(models.Model):
                 warehouse = website.warehouse_id
 
         if warehouse:
-            rounding = self[0].uom_id.rounding
-
             if not warehouse.include_incoming_qty:
-                for data in res.values():
+                for product_id, data in res.items():
+                    product = self.env["product.product"].browse(product_id)
                     data["virtual_available"] = float_round(
                         data["qty_available"] - data["outgoing_qty"],
-                        precision_rounding=rounding,
+                        precision_rounding=product.uom_id.rounding,
                     )
 
         return res
